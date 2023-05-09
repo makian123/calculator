@@ -3,6 +3,10 @@
 #include <float.h>
 #include <errno.h>
 #include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+double Parse(vector_t *vec);
 
 static int Precedence(enum TokenType type) {
 	switch (type) {
@@ -12,6 +16,13 @@ static int Precedence(enum TokenType type) {
 		case TOK_MULT:
 		case TOK_DIV:
 			return 1;
+		case TOK_EXP:
+			return 2;
+		case TOK_FUNC_SIN:
+		case TOK_FUNC_COS:
+		case TOK_FUNC_TG:
+		case TOK_FUNC_CTG:
+			return 3;
 	}
 
 	return -1;
@@ -26,6 +37,27 @@ void PrintVector(vector_t *vec) {
 	}
 }
 
+double ParseRange(vector_t *original, size_t begin, size_t len) {
+	if (!original || begin >= original->len) {
+		errno = EFAULT;
+		return DBL_MAX;
+	}
+
+	vector_t *vec = CopyVector(original);
+	if (!vec) {
+		errno = EFAULT;
+		return DBL_MAX;
+	}
+
+	vec->len = len;
+	memcpy(vec->data, (void *)((uintptr_t)vec->data + (vec->itemSize * begin)), vec->itemSize * len);
+
+	double res = Parse(vec);
+	DeleteVector(vec);
+
+	return res;
+}
+
 double Parse(vector_t *vec) {
 	if (!vec) {
 		errno = EFAULT;
@@ -36,7 +68,39 @@ double Parse(vector_t *vec) {
 	if (vec->len == 1) {
 		token_t *tmpTok = *(token_t **)VectorAt(vec, 0);
 		if (tmpTok->type == TOK_NUMBER) return tmpTok->val;
-		DeleteToken(tmpTok);
+		else {
+			errno = EFAULT;
+			return DBL_MAX;
+		}
+	}
+	
+	if(vec->len >= 2)
+	{
+		token_t *sign = *(token_t **)VectorAt(vec, 0);
+		token_t *num = *(token_t **)VectorAt(vec, 1);
+		
+		if ((sign->type == TOK_ADD || sign->type == TOK_SUB) && num->type == TOK_NUMBER) {
+			token_t *tmpTok = CreateNumber(0);
+			if (!tmpTok) {
+				errno = EFAULT;
+				return DBL_MAX;
+			}
+
+			VectorInsert(vec, 0, &tmpTok);
+		}
+
+	}
+
+	vector_t *bufferTokens = CreateVector(sizeof(token_t *));
+	if(!bufferTokens) {
+		errno = EFAULT;
+		return DBL_MAX;
+	}
+
+	vector_t *right = CopyVector(vec);
+	if (!right) {
+		errno = EFAULT;
+		return DBL_MAX;
 	}
 
 	vector_t *left = CreateVector(sizeof(token_t *));
@@ -54,10 +118,97 @@ double Parse(vector_t *vec) {
 	}
 
 	double res = 0, val = 0;
+	//parse functions to tokens
+	for (long long i = 0; i < right->len; ++i) {
+		token_t *tok = *(token_t**)VectorAt(right, i);
+		if (!tok) continue;
+		if (tok->type != TOK_FUNC_COS &&
+			tok->type != TOK_FUNC_SIN &&
+			tok->type != TOK_FUNC_TG &&
+			tok->type != TOK_FUNC_CTG) {
+			continue;
+		}
+
+		token_t *lookahead = *(token_t **)VectorAt(right, i + 1);
+		if (!lookahead || lookahead->type != TOK_OPEN_PARENTH) {
+			if (bufferTokens->len) {
+				while (bufferTokens->len) {
+					DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
+				}
+			}
+
+			DeleteVector(right);
+			DeleteVector(left);
+			DeleteVector(buffer);
+			DeleteVector(bufferTokens);
+			
+			errno = EFAULT;
+			return DBL_MAX;
+		}
+
+		size_t ctr = 0;
+		size_t openParenth = 1;
+		//Figure out which range the parentheses are
+		while (openParenth != 0 && ((i + 2 + ctr) < right->len)) {
+			lookahead = *(token_t **)VectorAt(right, i + 2 + ctr);
+			if (lookahead->type == TOK_CLOSED_PARENTH) openParenth--;
+			else if (lookahead->type == TOK_OPEN_PARENTH) openParenth++;
+			if (!openParenth) break;
+
+			if (!lookahead) {
+				if (bufferTokens->len) {
+					while (bufferTokens->len) {
+						DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
+					}
+				}
+
+				DeleteVector(right);
+				DeleteVector(left);
+				DeleteVector(buffer);
+				DeleteVector(bufferTokens);
+
+				errno = EFAULT;
+				return DBL_MAX;
+			}
+			ctr++;
+		}
+
+		//Gets the result of the inside of function
+		double res = ParseRange(right, i + 2, ctr);
+		//Do operation
+		if (tok->type == TOK_FUNC_SIN) res = sin(res);
+		else if (tok->type == TOK_FUNC_COS) res = cos(res);
+		else if (tok->type == TOK_FUNC_TG) res = tan(res);
+		else if (tok->type == TOK_FUNC_CTG) res = 1.0 / tan(res);
+
+		token_t *resTok = CreateNumber(res);
+		if (!resTok) {
+			if (bufferTokens->len) {
+				while (bufferTokens->len) {
+					DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
+				}
+			}
+
+			DeleteVector(right);
+			DeleteVector(left);
+			DeleteVector(buffer);
+			DeleteVector(bufferTokens);
+
+			errno = EFAULT;
+			return DBL_MAX;
+		}
+
+		for (long long j = i + ctr + 2; (j >= i) && right->len; --j) {
+			VectorErase(right, j);
+		}
+
+		VectorInsert(right, i, &resTok);
+		VectorPushBack(bufferTokens, &resTok);
+	}
 
 	//parse everything to postfix
-	while (vec->len > 0) {
-		token_t *tok = *(token_t **)VectorAt(vec, 0);
+	while (right->len > 0) {
+		token_t *tok = *(token_t **)VectorAt(right, 0);
 		if (!tok) {
 			DeleteVector(left);
 			DeleteVector(buffer);
@@ -74,7 +225,8 @@ double Parse(vector_t *vec) {
 			case TOK_ADD:
 			case TOK_SUB:
 			case TOK_MULT:
-			case TOK_DIV: {
+			case TOK_DIV:
+			case TOK_EXP: {
 				while (buffer->len) {
 					token_t *buffTok = *(token_t **)VectorAt(buffer, buffer->len - 1);
 					if (!buffTok) continue;
@@ -105,7 +257,7 @@ double Parse(vector_t *vec) {
 			}
 		}
 
-		VectorErase(vec, 0);
+		VectorErase(right, 0);
 	}
 
 	while (buffer->len) {
@@ -114,21 +266,29 @@ double Parse(vector_t *vec) {
 	}
 
 	//moves everything to the right vector
-	while (left->len) {
-		token_t *tok = *(token_t **)VectorAt(left, 0);
-		VectorPushBack(vec, &tok);
-		VectorErase(left, 0);
+	right = CopyVector(left);
+	VectorClear(left);
+
+	if (right->len == 1) {
+		token_t *tok = *(token_t **)VectorAt(right, 0);
+		if (!tok) {
+			errno = EFAULT;
+			return DBL_MAX;
+		}
+
+		return tok->val;
 	}
 
 	//begins the evaluation
-	while (vec->len) {
-		token_t *tok = *(token_t**)VectorAt(vec, 0);
+	while (right->len) {
+		token_t *tok = *(token_t**)VectorAt(right, 0);
 
 		if (tok->type == TOK_NUMBER) 
 			VectorPushBack(buffer, &tok);
 		else {
 			if (buffer->len < 2) {
-				goto badParse;
+				errno = EFAULT;
+				break;
 			}
 
 			token_t *right = *(token_t **)VectorAt(buffer, buffer->len - 1);
@@ -147,47 +307,36 @@ double Parse(vector_t *vec) {
 				case TOK_DIV:
 					res = left->val / right->val;
 					break;
+				case TOK_EXP:
+					res = pow(left->val, right->val);
+					break;
 			}
 			token_t *tmpTok = CreateNumber(res);
 			if (!tmpTok) {
-				goto badParse;
+				errno = EFAULT;
+				break;
 			}
 
 			VectorPushBack(buffer, &tmpTok);
-
-			DeleteToken(right);
-			DeleteToken(left);
-			DeleteToken(tok);
 
 			VectorErase(buffer, buffer->len - 2);
 			VectorErase(buffer, buffer->len - 2);
 		}
 
-		VectorErase(vec, 0);
+		VectorErase(right, 0);
 	}
-
-	if (!vec->len && !left->len && buffer->len <= 1) {
-		goto goodParse;
-	}
-
-	badParse:
-	errno = EFAULT;
-	while (vec->len) VectorErase(vec, 0);
+	while (right->len) VectorErase(right, 0);
 	while (left->len) VectorErase(left, 0);
 	while (buffer->len) VectorErase(buffer, 0);
+	while (bufferTokens->len) {
+		DeleteToken(*(token_t**)VectorAt(bufferTokens, 0));
+		VectorErase(bufferTokens, 0);
+	}
 
+	DeleteVector(right);
 	DeleteVector(left);
 	DeleteVector(buffer);
+	DeleteVector(bufferTokens);
 
-	return DBL_MAX;
-
-	goodParse:
-	while (vec->len) VectorErase(vec, 0);
-	while (left->len) VectorErase(left, 0);
-	while (buffer->len) VectorErase(buffer, 0);
-
-	DeleteVector(left);
-	DeleteVector(buffer);
-
-	return res;
+	return (errno == EFAULT ? DBL_MAX : res);
 }

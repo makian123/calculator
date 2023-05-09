@@ -17,5 +17,7 @@ void VectorInsert(vector_t *vec, size_t index, void *item);
 
 void *VectorAt(vector_t *vec, size_t index);
 
+vector_t *CopyVector(vector_t *original);
+
 void VectorErase(vector_t *vec, size_t index);
 void VectorClear(vector_t *vec);

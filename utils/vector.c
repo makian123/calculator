@@ -88,6 +88,29 @@ void *VectorAt(vector_t *vec, size_t index) {
 	return (void *)((uintptr_t)vec->data + (vec->itemSize * index));
 }
 
+vector_t *CopyVector(vector_t *original) {
+	if (!original) return NULL;
+
+	vector_t *vec = calloc(1, sizeof(vector_t));
+	if (!vec) return NULL;
+
+	vec->itemSize = original->itemSize;
+	vec->capacity = original->capacity;
+	vec->len = original->len;
+
+	if (original->data) {
+		vec->data = calloc(original->capacity, original->itemSize);
+		if (!vec->data) {
+			free(vec);
+			return NULL;
+		}
+
+		memcpy(vec->data, original->data, vec->itemSize * vec->len);
+	}
+
+	return vec;
+}
+
 void VectorErase(vector_t *vec, size_t index) {
 	if (!vec || index >= vec->len) return;
 

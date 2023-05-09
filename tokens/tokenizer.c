@@ -36,10 +36,16 @@ token_t *TokenizerNextToken(tokenizer_t *tokenizer) {
 	}
 
 	char buffer[1024] = { 0 };
+	if (isalpha(ptr[tokenizer->index])) {
+		while (isalpha(ptr[tokenizer->index])) {
+			buffer[strlen(buffer)] = ptr[tokenizer->index++];
+		}
+
+		return CreateFunc(buffer);
+	}
 	if (isalnum(ptr[tokenizer->index])) {
 		while (isalnum(ptr[tokenizer->index]) || ptr[tokenizer->index] == '.') {
-			buffer[strlen(buffer)] = ptr[tokenizer->index];
-			tokenizer->index++;
+			buffer[strlen(buffer)] = ptr[tokenizer->index++];
 		}
 		return CreateNumber(atof(buffer));
 	}

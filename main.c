@@ -5,8 +5,10 @@
 #include "tokens/tokenizer.h"
 #include "evaluator/parser.h"
 
+#include <math.h>
+
 int main(void) {
-	tokenizer_t *tokenizer = CreateTokenizer("12");
+	tokenizer_t *tokenizer = CreateTokenizer("0.3.5 * 100 ( / 50))");
 	if (!tokenizer) return 1;
 
 	token_t *tok = NULL;
@@ -21,6 +23,10 @@ int main(void) {
 	}
 	else {
 		printf("Error parsing the expression\n");
+	}
+
+	for (size_t i = 0; i < vec->len; ++i) {
+		DeleteToken(*(token_t **)VectorAt(vec, i));
 	}
 
 	DeleteVector(vec);

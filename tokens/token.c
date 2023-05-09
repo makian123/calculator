@@ -18,10 +18,10 @@ token_t *CreateFunc(const char *name) {
 	if (!tok) return NULL;
 	char isGood = 1;
 
-	if (strcmp(name, "sin")) tok->type = TOK_FUNC_SIN;
-	else if (strcmp(name, "cos")) tok->type = TOK_FUNC_COS;
-	else if (strcmp(name, "tg")) tok->type = TOK_FUNC_TG;
-	else if (strcmp(name, "ctg")) tok->type = TOK_FUNC_CTG;
+	if (!strcmp(name, "sin")) tok->type = TOK_FUNC_SIN;
+	else if (!strcmp(name, "cos")) tok->type = TOK_FUNC_COS;
+	else if (!strcmp(name, "tg")) tok->type = TOK_FUNC_TG;
+	else if (!strcmp(name, "ctg")) tok->type = TOK_FUNC_CTG;
 	else isGood = 0;
 
 	if (!isGood) {
@@ -48,6 +48,9 @@ token_t *CreateOperation(char op) {
 		case '/':
 			tok->type = TOK_DIV;
 			break;
+		case '^':
+			tok->type = TOK_EXP;
+			break;
 		case '(':
 			tok->type = TOK_OPEN_PARENTH;
 			break;
@@ -69,7 +72,7 @@ void DeleteToken(token_t *tok) {
 
 static const char *tokTypeNames[] = {
 	"NUMBER",
-	"+", "-", "*", "/",
+	"+", "-", "*", "/", "^",
 	"(", ")",
 	"sin", "cos", "tg", "ctg"
 };
