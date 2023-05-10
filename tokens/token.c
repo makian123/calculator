@@ -4,6 +4,15 @@
 #include <string.h>
 #include <stdio.h>
 
+token_t *CreateEndToken() {
+	token_t *tok = malloc(sizeof(token_t));
+	if (!tok) return NULL;
+
+	tok->type = TOK_END;
+
+	return tok;
+}
+
 token_t *CreateNumber(double num) {
 	token_t *tok = malloc(sizeof(token_t));
 	if (!tok) return NULL;

@@ -139,6 +139,9 @@
     <ClInclude Include="tokens\tokenizer.h" />
     <ClInclude Include="utils\vector.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="numbers.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

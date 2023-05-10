@@ -30,6 +30,8 @@ void DeleteTokenizer(tokenizer_t *tokenizer) {
 
 token_t *TokenizerNextToken(tokenizer_t *tokenizer) {
 	if (!tokenizer || !tokenizer->str) return NULL;
+	if (tokenizer->index >= strlen(tokenizer->str)) return CreateEndToken();
+
 	char *ptr = tokenizer->str;
 	while (ptr[tokenizer->index] && isspace(ptr[tokenizer->index])) {
 		tokenizer->index++;
