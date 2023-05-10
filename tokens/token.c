@@ -4,6 +4,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+#undef _USE_MATH_DEFINES
+
 token_t *CreateEndToken() {
 	token_t *tok = malloc(sizeof(token_t));
 	if (!tok) return NULL;
@@ -31,6 +35,12 @@ token_t *CreateFunc(const char *name) {
 	else if (!strcmp(name, "cos")) tok->type = TOK_FUNC_COS;
 	else if (!strcmp(name, "tg")) tok->type = TOK_FUNC_TG;
 	else if (!strcmp(name, "ctg")) tok->type = TOK_FUNC_CTG;
+	else if (!strcmp(name, "log")) tok->type = TOK_FUNC_LN;
+	else if (!strcmp(name, "ln")) tok->type = TOK_FUNC_LN;
+	else if (!strcmp(name, "sqrt")) tok->type = TOK_FUNC_SQRT;
+	//Deals with constants
+	else if (!strcmp(name, "e")) { tok->type = TOK_NUMBER; tok->val = M_E; }
+	else if (!strcmp(name, "pi")) { tok->type = TOK_NUMBER; tok->val = M_PI; }
 	else isGood = 0;
 
 	if (!isGood) {

@@ -17,7 +17,10 @@ enum TokenType {
 	TOK_FUNC_SIN,
 	TOK_FUNC_COS,
 	TOK_FUNC_TG,
-	TOK_FUNC_CTG
+	TOK_FUNC_CTG,
+	TOK_FUNC_LOG,
+	TOK_FUNC_LN,
+	TOK_FUNC_SQRT
 };
 
 typedef struct token {

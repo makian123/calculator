@@ -103,7 +103,7 @@ void FindNumber() {
 }
 void SortNumbers() {
 	char file[256] = { 0 };
-	double target;
+	double target = 0;
 
 	while (getc(stdin) != '\n');
 	printf("Unesite putanju datoteke: ");

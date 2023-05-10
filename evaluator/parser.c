@@ -3,7 +3,9 @@
 #include <float.h>
 #include <errno.h>
 #include <stdio.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
+#undef _USE_MATH_DEFINES
 #include <string.h>
 
 double Parse(vector_t *vec);
@@ -18,11 +20,6 @@ static int Precedence(enum TokenType type) {
 			return 1;
 		case TOK_EXP:
 			return 2;
-		case TOK_FUNC_SIN:
-		case TOK_FUNC_COS:
-		case TOK_FUNC_TG:
-		case TOK_FUNC_CTG:
-			return 3;
 	}
 
 	return -1;
@@ -58,19 +55,60 @@ double ParseRange(vector_t *original, size_t begin, size_t len) {
 	return res;
 }
 
+char isValidExpression(vector_t *vec) {
+	if (!vec || !vec->len) return 0;
+
+	token_t *lastTok = NULL;
+	token_t *currTok = NULL;
+	size_t openParenth = 0;
+
+	for (size_t i = 0; i < vec->len; ++i) {
+		currTok = *(token_t **)VectorAt(vec, i);
+		if (!currTok || currTok->type == TOK_END) return 0;
+
+		if (currTok->type == TOK_OPEN_PARENTH) openParenth++;
+		else if (currTok->type == TOK_CLOSED_PARENTH) openParenth--;
+
+		if (lastTok && lastTok->type == TOK_OPEN_PARENTH) {
+			if (currTok->type != TOK_NUMBER &&
+				currTok->type != TOK_FUNC_SIN &&
+				currTok->type != TOK_FUNC_COS &&
+				currTok->type != TOK_FUNC_TG &&
+				currTok->type != TOK_FUNC_CTG &&
+				currTok->type != TOK_FUNC_LOG &&
+				currTok->type != TOK_FUNC_LN &&
+				currTok->type != TOK_OPEN_PARENTH)
+				return 0;
+		}
+
+		lastTok = currTok;
+	}
+
+	return openParenth == 0;
+}
+
 double Parse(vector_t *vec) {
+	vector_t *bufferTokens = NULL;
+	vector_t *buffer = NULL;
+	vector_t *right = NULL;
+	vector_t *left = NULL;
+
 	if (!vec) {
 		errno = EFAULT;
-		return DBL_MAX;
+		goto cleanup;
 	}
 	if (vec->len == 0) return 0;
+	if (!isValidExpression(vec)) {
+		errno = EFAULT;
+		goto cleanup;
+	}
 
 	if (vec->len == 1) {
 		token_t *tmpTok = *(token_t **)VectorAt(vec, 0);
 		if (tmpTok->type == TOK_NUMBER) return tmpTok->val;
 		else {
 			errno = EFAULT;
-			return DBL_MAX;
+			goto cleanup;
 		}
 	}
 	
@@ -91,30 +129,28 @@ double Parse(vector_t *vec) {
 
 	}
 
-	vector_t *bufferTokens = CreateVector(sizeof(token_t *));
+	bufferTokens = CreateVector(sizeof(token_t *));
 	if(!bufferTokens) {
 		errno = EFAULT;
-		return DBL_MAX;
+		goto cleanup;
 	}
 
-	vector_t *right = CopyVector(vec);
+	right = CopyVector(vec);
 	if (!right) {
 		errno = EFAULT;
-		return DBL_MAX;
+		goto cleanup;
 	}
 
-	vector_t *left = CreateVector(sizeof(token_t *));
+	left = CreateVector(sizeof(token_t *));
 	if (!left) {
 		errno = EFAULT;
-		return DBL_MAX;
+		goto cleanup;
 	}
 
-	vector_t *buffer = CreateVector(sizeof(token_t *));
+	buffer = CreateVector(sizeof(token_t *));
 	if (!buffer) {
 		errno = EFAULT;
-
-		DeleteVector(left);
-		return DBL_MAX;
+		goto cleanup;
 	}
 
 	double res = 0, val = 0;
@@ -125,25 +161,17 @@ double Parse(vector_t *vec) {
 		if (tok->type != TOK_FUNC_COS &&
 			tok->type != TOK_FUNC_SIN &&
 			tok->type != TOK_FUNC_TG &&
-			tok->type != TOK_FUNC_CTG) {
+			tok->type != TOK_FUNC_CTG &&
+			tok->type != TOK_FUNC_LOG &&
+			tok->type != TOK_FUNC_LN &&
+			tok->type != TOK_FUNC_SQRT) {
 			continue;
 		}
 
 		token_t *lookahead = *(token_t **)VectorAt(right, i + 1);
 		if (!lookahead || lookahead->type != TOK_OPEN_PARENTH) {
-			if (bufferTokens->len) {
-				while (bufferTokens->len) {
-					DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
-				}
-			}
-
-			DeleteVector(right);
-			DeleteVector(left);
-			DeleteVector(buffer);
-			DeleteVector(bufferTokens);
-			
 			errno = EFAULT;
-			return DBL_MAX;
+			goto cleanup;
 		}
 
 		size_t ctr = 0;
@@ -156,19 +184,8 @@ double Parse(vector_t *vec) {
 			if (!openParenth) break;
 
 			if (!lookahead) {
-				if (bufferTokens->len) {
-					while (bufferTokens->len) {
-						DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
-					}
-				}
-
-				DeleteVector(right);
-				DeleteVector(left);
-				DeleteVector(buffer);
-				DeleteVector(bufferTokens);
-
 				errno = EFAULT;
-				return DBL_MAX;
+				goto cleanup;
 			}
 			ctr++;
 		}
@@ -180,22 +197,21 @@ double Parse(vector_t *vec) {
 		else if (tok->type == TOK_FUNC_COS) res = cos(res);
 		else if (tok->type == TOK_FUNC_TG) res = tan(res);
 		else if (tok->type == TOK_FUNC_CTG) res = 1.0 / tan(res);
+		else if (tok->type == TOK_FUNC_LOG) res = log(res);
+		else if (tok->type == TOK_FUNC_LN) res = log(res) / log(M_E);
+		else if (tok->type == TOK_FUNC_SQRT) {
+			if (res < 0.0) {
+				errno = EFAULT;
+				goto cleanup;
+			}
+
+			res = sqrt(res);
+		}
 
 		token_t *resTok = CreateNumber(res);
 		if (!resTok) {
-			if (bufferTokens->len) {
-				while (bufferTokens->len) {
-					DeleteToken(*(token_t **)VectorAt(bufferTokens, 0));
-				}
-			}
-
-			DeleteVector(right);
-			DeleteVector(left);
-			DeleteVector(buffer);
-			DeleteVector(bufferTokens);
-
 			errno = EFAULT;
-			return DBL_MAX;
+			goto cleanup;
 		}
 
 		for (long long j = i + ctr + 2; (j >= i) && right->len; --j) {
@@ -210,11 +226,8 @@ double Parse(vector_t *vec) {
 	while (right->len > 0) {
 		token_t *tok = *(token_t **)VectorAt(right, 0);
 		if (!tok) {
-			DeleteVector(left);
-			DeleteVector(buffer);
-
 			errno = EFAULT;
-			return 0;
+			goto cleanup;
 		}
 
 		switch (tok->type) {
@@ -273,7 +286,7 @@ double Parse(vector_t *vec) {
 		token_t *tok = *(token_t **)VectorAt(right, 0);
 		if (!tok) {
 			errno = EFAULT;
-			return DBL_MAX;
+			goto cleanup;
 		}
 
 		return tok->val;
@@ -288,7 +301,7 @@ double Parse(vector_t *vec) {
 		else {
 			if (buffer->len < 2) {
 				errno = EFAULT;
-				break;
+				goto cleanup;
 			}
 
 			token_t *right = *(token_t **)VectorAt(buffer, buffer->len - 1);
@@ -314,7 +327,7 @@ double Parse(vector_t *vec) {
 			token_t *tmpTok = CreateNumber(res);
 			if (!tmpTok) {
 				errno = EFAULT;
-				break;
+				goto cleanup;
 			}
 
 			VectorPushBack(buffer, &tmpTok);
@@ -325,10 +338,9 @@ double Parse(vector_t *vec) {
 
 		VectorErase(right, 0);
 	}
-	while (right->len) VectorErase(right, 0);
-	while (left->len) VectorErase(left, 0);
-	while (buffer->len) VectorErase(buffer, 0);
-	while (bufferTokens->len) {
+	
+	cleanup:
+	while (bufferTokens && bufferTokens->len) {
 		DeleteToken(*(token_t**)VectorAt(bufferTokens, 0));
 		VectorErase(bufferTokens, 0);
 	}
