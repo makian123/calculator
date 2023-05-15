@@ -52,6 +52,24 @@ token_t *TokenizerNextToken(tokenizer_t *tokenizer) {
 		return CreateNumber(atof(buffer));
 	}
 
+	//Deals with repeating additions and subtractions
+	//Eg: 1 ++ - 2 -> 1 - 2
+	if (ptr[tokenizer->index] == '+' || ptr[tokenizer->index] == '-') {
+		size_t negatives = 0;
+
+		while (ptr[tokenizer->index] == '+' || ptr[tokenizer->index] == '-') {
+			negatives += ptr[tokenizer->index] == '-';
+			
+			tokenizer->index++;
+			while (ptr[tokenizer->index] && isspace(ptr[tokenizer->index])) {
+				tokenizer->index++;
+			}
+		}
+
+
+		return CreateOperation((negatives & 1) ? '-' : '+');
+	}
+
 	return CreateOperation(ptr[tokenizer->index++]);;
 }
 token_t *TokenizerCurrentToken(tokenizer_t *tokenizer) {

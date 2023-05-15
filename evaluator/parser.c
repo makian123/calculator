@@ -71,6 +71,8 @@ char isValidExpression(vector_t *vec) {
 
 		if (lastTok && lastTok->type == TOK_OPEN_PARENTH) {
 			if (currTok->type != TOK_NUMBER &&
+				currTok->type != TOK_ADD &&
+				currTok->type != TOK_SUB &&
 				currTok->type != TOK_FUNC_SIN &&
 				currTok->type != TOK_FUNC_COS &&
 				currTok->type != TOK_FUNC_TG &&
@@ -292,6 +294,10 @@ double Parse(vector_t *vec) {
 		return tok->val;
 	}
 
+	//printf("Postfix:\n");
+	//PrintVector(right);
+	//printf("\n");
+
 	//begins the evaluation
 	while (right->len) {
 		token_t *tok = *(token_t**)VectorAt(right, 0);
@@ -303,25 +309,24 @@ double Parse(vector_t *vec) {
 				errno = EFAULT;
 				goto cleanup;
 			}
-
-			token_t *right = *(token_t **)VectorAt(buffer, buffer->len - 1);
-			token_t *left = *(token_t **)VectorAt(buffer, buffer->len - 2);
+			token_t *rightTok = *(token_t **)VectorAt(buffer, buffer->len - 1);
+			token_t *leftTok = *(token_t **)VectorAt(buffer, buffer->len - 2);
 
 			switch (tok->type) {
 				case TOK_ADD:
-					res = left->val + right->val;
+					res = leftTok->val + rightTok->val;
 					break;
 				case TOK_SUB:
-					res = left->val - right->val;
+					res = leftTok->val - rightTok->val;
 					break;
 				case TOK_MULT:
-					res = left->val * right->val;
+					res = leftTok->val * rightTok->val;
 					break;
 				case TOK_DIV:
-					res = left->val / right->val;
+					res = leftTok->val / rightTok->val;
 					break;
 				case TOK_EXP:
-					res = pow(left->val, right->val);
+					res = pow(leftTok->val, rightTok->val);
 					break;
 			}
 			token_t *tmpTok = CreateNumber(res);
