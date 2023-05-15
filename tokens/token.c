@@ -38,9 +38,14 @@ token_t *CreateFunc(const char *name) {
 	else if (!strcmp(name, "log")) tok->type = TOK_FUNC_LN;
 	else if (!strcmp(name, "ln")) tok->type = TOK_FUNC_LN;
 	else if (!strcmp(name, "sqrt")) tok->type = TOK_FUNC_SQRT;
+	else if (!strcmp(name, "abs")) tok->type = TOK_FUNC_ABS;
 	//Deals with constants
 	else if (!strcmp(name, "e")) { tok->type = TOK_NUMBER; tok->val = M_E; }
 	else if (!strcmp(name, "pi")) { tok->type = TOK_NUMBER; tok->val = M_PI; }
+	else if (!strcmp(name, "x")) tok->type = TOK_VAR_X;
+	else if (!strcmp(name, "y")) tok->type = TOK_VAR_Y;
+	else if (!strcmp(name, ">")) tok->type = TOK_GREATER;
+	else if (!strcmp(name, "<")) tok->type = TOK_LOWER;
 	else isGood = 0;
 
 	if (!isGood) {
@@ -76,6 +81,12 @@ token_t *CreateOperation(char op) {
 		case ')':
 			tok->type = TOK_CLOSED_PARENTH;
 			break;
+		case '>':
+			tok->type = TOK_GREATER;
+			break;
+		case '<':
+			tok->type = TOK_LOWER;
+			break;
 		default:
 			free(tok);
 			return NULL;
@@ -90,14 +101,15 @@ void DeleteToken(token_t *tok) {
 }
 
 static const char *tokTypeNames[] = {
-	"NUMBER",
+	"NUMBER", "x", "y", ">", "<",
 	"+", "-", "*", "/", "^",
 	"(", ")",
-	"sin", "cos", "tg", "ctg"
+	"sin", "cos", "tg", "ctg",
+	"log", "ln", "sqrt", "abs"
 };
 
 void PrintToken(token_t *tok) {
-	if (!tok) return;
+	if (!tok && tok->type != TOK_END) return;
 
 	printf("Token: %s", tokTypeNames[tok->type]);
 	if (tok->type == TOK_NUMBER) {

@@ -105,6 +105,8 @@ double Parse(vector_t *vec) {
 		goto cleanup;
 	}
 
+	//PrintVector(vec);
+
 	if (vec->len == 1) {
 		token_t *tmpTok = *(token_t **)VectorAt(vec, 0);
 		if (tmpTok->type == TOK_NUMBER) return tmpTok->val;
@@ -166,7 +168,8 @@ double Parse(vector_t *vec) {
 			tok->type != TOK_FUNC_CTG &&
 			tok->type != TOK_FUNC_LOG &&
 			tok->type != TOK_FUNC_LN &&
-			tok->type != TOK_FUNC_SQRT) {
+			tok->type != TOK_FUNC_SQRT &&
+			tok->type != TOK_FUNC_ABS) {
 			continue;
 		}
 
@@ -201,6 +204,7 @@ double Parse(vector_t *vec) {
 		else if (tok->type == TOK_FUNC_CTG) res = 1.0 / tan(res);
 		else if (tok->type == TOK_FUNC_LOG) res = log(res);
 		else if (tok->type == TOK_FUNC_LN) res = log(res) / log(M_E);
+		else if (tok->type == TOK_FUNC_ABS) res = fabs(res);
 		else if (tok->type == TOK_FUNC_SQRT) {
 			if (res < 0.0) {
 				errno = EFAULT;

@@ -2,23 +2,34 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "utils/vector.h"
 #include "tokens/token.h"
 #include "tokens/tokenizer.h"
 #include "evaluator/parser.h"
 
-void ShellSort(double *arr, size_t n) {
-	for (size_t gap = n / 2; gap > 0; gap /= 2) {
-		for (size_t i = gap; i < n; ++i) {
-			double tmp = arr[i];
+void Swap(double *a, double *b) {
+	if (!a || !b) return;
 
-			size_t j;
-			for (j = i; j >= gap && arr[j - gap] > tmp; j -= gap) {
-				arr[j] = arr[j - gap];
+	double tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+void BubbleSort(double *arrCmp, double *arrOriginal, size_t n, char greater) {
+	if (!arrCmp || !arrOriginal || !n) return;
+
+	for (size_t i = 0; i < n - 1; ++i) {
+		for (size_t j = i + 1; j < n; ++j) {
+			if (greater && arrCmp[j] > arrCmp[i]) {
+				Swap(&arrCmp[j], &arrCmp[i]);
+				Swap(&arrOriginal[j], &arrOriginal[i]);
 			}
-
-			arr[j] = tmp;
+			else if (!greater && arrCmp[j] < arrCmp[i]) {
+				Swap(&arrCmp[j], &arrCmp[i]);
+				Swap(&arrOriginal[j], &arrOriginal[i]);
+			}
 		}
 	}
 }
@@ -103,7 +114,7 @@ void FindNumber() {
 }
 void SortNumbers() {
 	char file[256] = { 0 };
-	double target = 0;
+	char exprBuffer[1024] = { 0 };
 
 	while (getc(stdin) != '\n');
 	printf("Unesite putanju datoteke: ");
@@ -115,9 +126,13 @@ void SortNumbers() {
 		printf("Greska u otvaranju dokumenta\n");
 	}
 
+	printf("Unesite izraz za sortiranje (x (</>) y), varijable su 'x' i 'y', y je varijabla koja slijedi\n: ");
+	scanf(" %1023[^\n]", exprBuffer);
+	getc(stdin);
+
 	size_t ctr = 0;
 	double tmp = 0;
-	while (fscanf(fp, " %lf", &tmp) == 1)ctr++;
+	while (fscanf(fp, " %lf", &tmp) == 1) ctr++;
 
 	//Postavlja na pocetak
 	fseek(fp, 0, SEEK_SET);
@@ -134,7 +149,62 @@ void SortNumbers() {
 	}
 	fclose(fp);
 
-	ShellSort(brojevi, ctr);
+	double *brojeviRacunati = calloc(ctr, sizeof(double));
+	if (!brojeviRacunati) {
+		free(brojevi);
+		return;
+	}
+	tokenizer_t *tokenizer = CreateTokenizer(exprBuffer);
+	if (!tokenizer) {
+		free(brojevi);
+		free(brojeviRacunati);
+		return;
+	}
+	vector_t *vec = CreateVector(sizeof(token_t*));
+	if (!vec) {
+		free(tokenizer);
+		free(brojeviRacunati);
+		return;
+	}
+
+	token_t *tok = NULL;
+	char greater = 0;
+	
+	for (size_t i = 0; i < ctr; ++i) {
+		while ((tok = TokenizerNextToken(tokenizer)) && tok->type != TOK_END) {
+			if (tok->type == TOK_VAR_X) continue;
+			if(tok->type == TOK_VAR_Y) {
+				tok->val = brojevi[i];
+				tok->type = TOK_NUMBER;
+			}
+			else if (tok->type == TOK_GREATER || tok->type == TOK_LOWER) {
+				greater = tok->type == TOK_GREATER;
+				continue;
+			}
+
+			VectorPushBack(vec, &tok);
+		}
+
+		double tmp = Parse(vec);
+		brojeviRacunati[i] = tmp;
+
+		VectorClear(vec);
+		tokenizer->index = 0;
+
+		if (errno == EFAULT) {
+			free(brojevi);
+			free(brojeviRacunati);
+			DeleteTokenizer(tokenizer);
+
+			while (vec->len) VectorErase(vec, 0);
+			DeleteVector(vec);
+
+			printf("Pogreska pri sortiranju\n");
+			return;
+		}
+	}
+
+	BubbleSort(brojeviRacunati, brojevi, ctr, greater);
 
 	fp = fopen(file, "w");
 	if (!fp) {
@@ -146,8 +216,13 @@ void SortNumbers() {
 			fprintf(fp, "%lg ", brojevi[index++]);
 		}
 	}
+	
+	while (vec->len) VectorErase(vec, 0);
 	free(brojevi);
-	fclose(fp);
+	free(brojeviRacunati);
+	DeleteTokenizer(tokenizer);
+	DeleteVector(vec);
+	if(fp) fclose(fp);
 }
 
 int main(void) {

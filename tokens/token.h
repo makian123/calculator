@@ -4,6 +4,11 @@ enum TokenType {
 	TOK_END = -1,
 
 	TOK_NUMBER,
+	
+	TOK_VAR_X,
+	TOK_VAR_Y,
+	TOK_GREATER,
+	TOK_LOWER,
 
 	TOK_ADD,
 	TOK_SUB,
@@ -20,7 +25,8 @@ enum TokenType {
 	TOK_FUNC_CTG,
 	TOK_FUNC_LOG,
 	TOK_FUNC_LN,
-	TOK_FUNC_SQRT
+	TOK_FUNC_SQRT,
+	TOK_FUNC_ABS,
 };
 
 typedef struct token {
