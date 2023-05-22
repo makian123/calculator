@@ -284,6 +284,7 @@ int main(void) {
 		}
 
 		printf("\n");
+		errno = 0;
 	}
 
 	return 0;
