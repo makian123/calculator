@@ -126,7 +126,12 @@ void SortNumbers() {
 		printf("Greska u otvaranju dokumenta\n");
 	}
 
-	printf("Unesite izraz za sortiranje (x (</>) y), varijable su 'x' i 'y', y je varijabla koja slijedi\n: ");
+	printf("Unesite izraz za sortiranje ((</>) y), y je varijabla poslije x\n");
+	printf("Primjer:\n");
+	printf("\tPrije sortiranja : [1, 2, 4, 6] \n");
+	printf("\tIzraz: 'x < y'\n");
+	printf("\tNakon sortiranja [6, 4, 2, 1]\n");
+	printf("x ");
 	scanf(" %1023[^\n]", exprBuffer);
 	getc(stdin);
 
@@ -171,18 +176,40 @@ void SortNumbers() {
 	char greater = 0;
 	
 	for (size_t i = 0; i < ctr; ++i) {
+		char hadTok = 0;
 		while ((tok = TokenizerNextToken(tokenizer)) && tok->type != TOK_END) {
-			if (tok->type == TOK_VAR_X) continue;
 			if(tok->type == TOK_VAR_Y) {
 				tok->val = brojevi[i];
 				tok->type = TOK_NUMBER;
 			}
 			else if (tok->type == TOK_GREATER || tok->type == TOK_LOWER) {
+				if (hadTok) {
+					free(brojevi);
+					free(brojeviRacunati);
+					DeleteTokenizer(tokenizer);
+
+					DeleteVector(vec);
+
+					printf("Pogreska pri unosu\n");
+					return;
+				}
 				greater = tok->type == TOK_GREATER;
+				hadTok = 1;
 				continue;
 			}
 
 			VectorPushBack(vec, &tok);
+		}
+		if (!hadTok) {
+			free(brojevi);
+			free(brojeviRacunati);
+			DeleteTokenizer(tokenizer);
+
+			while (vec->len) VectorErase(vec, 0);
+			DeleteVector(vec);
+
+			printf("Pogreska pri unosu\n");
+			return;
 		}
 
 		double tmp = Parse(vec);
@@ -234,7 +261,16 @@ int main(void) {
 		printf("\t[2] Trazenje broja\n");
 		printf("\t[3] Sortiranje brojeva\n");
 		printf("\t[0] Kraj\n> ");
-		scanf(" %d", &choice);
+
+
+		if (scanf(" %d", &choice) == 0) {
+			printf("Neispravan unos\n");
+			choice = 0;
+			int tmpC;
+			while ((tmpC = getchar()) != EOF && tmpC != '\n');
+
+			continue;
+		}
 		if (!choice) break;
 
 		if (choice == 1) {
