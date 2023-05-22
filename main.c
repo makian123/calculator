@@ -95,6 +95,7 @@ void FindNumber() {
 	FILE *fp = fopen(file, "r");
 	if (!fp) {
 		printf("Greska u otvaranju dokumenta\n");
+		return;
 	}
 
 	size_t ctr = 0;
@@ -124,6 +125,7 @@ void SortNumbers() {
 	FILE *fp = fopen(file, "r");
 	if (!fp) {
 		printf("Greska u otvaranju dokumenta\n");
+		return;
 	}
 
 	printf("Unesite izraz za sortiranje ((</>) y), y je varijabla poslije x\n");
@@ -138,6 +140,11 @@ void SortNumbers() {
 	size_t ctr = 0;
 	double tmp = 0;
 	while (fscanf(fp, " %lf", &tmp) == 1) ctr++;
+	if (ctr < 2) {
+		printf("Nedovoljno brojeva\n");
+		fclose(fp);
+		return;
+	}
 
 	//Postavlja na pocetak
 	fseek(fp, 0, SEEK_SET);
