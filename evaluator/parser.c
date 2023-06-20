@@ -50,6 +50,7 @@ double ParseRange(vector_t *original, size_t begin, size_t len) {
 	memcpy(vec->data, (void *)((uintptr_t)vec->data + (vec->itemSize * begin)), vec->itemSize * len);
 
 	double res = Parse(vec);
+
 	DeleteVector(vec);
 
 	return res;
@@ -99,13 +100,12 @@ double Parse(vector_t *vec) {
 		errno = EFAULT;
 		goto cleanup;
 	}
+
 	if (vec->len == 0) return 0;
 	if (!isValidExpression(vec)) {
 		errno = EFAULT;
 		goto cleanup;
 	}
-
-	//PrintVector(vec);
 
 	if (vec->len == 1) {
 		token_t *tmpTok = *(token_t **)VectorAt(vec, 0);
@@ -202,8 +202,8 @@ double Parse(vector_t *vec) {
 		else if (tok->type == TOK_FUNC_COS) res = cos(res);
 		else if (tok->type == TOK_FUNC_TG) res = tan(res);
 		else if (tok->type == TOK_FUNC_CTG) res = 1.0 / tan(res);
-		else if (tok->type == TOK_FUNC_LOG) res = log(res);
-		else if (tok->type == TOK_FUNC_LN) res = log(res) / log(M_E);
+		else if (tok->type == TOK_FUNC_LOG) res = log10(res);
+		else if (tok->type == TOK_FUNC_LN) res = log(res);
 		else if (tok->type == TOK_FUNC_ABS) res = fabs(res);
 		else if (tok->type == TOK_FUNC_SQRT) {
 			if (res < 0.0) {
@@ -298,9 +298,9 @@ double Parse(vector_t *vec) {
 		return tok->val;
 	}
 
-	//printf("Postfix:\n");
-	//PrintVector(right);
-	//printf("\n");
+	printf("Postfix:\n");
+	PrintVector(right);
+	printf("\n");
 
 	//begins the evaluation
 	while (right->len) {

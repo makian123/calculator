@@ -62,7 +62,7 @@ void VectorInsert(vector_t *vec, size_t index, void *item) {
 	}
 
 	void *tmpArr = calloc(vec->capacity, vec->itemSize);
-	if (!tmpArr) return NULL;
+	if (!tmpArr) return;
 
 	memcpy(tmpArr, vec->data, index * vec->itemSize);
 	memcpy(

@@ -65,6 +65,39 @@ void ExpressionParser() {
 		free(tok);
 	}
 
+	//Cleaning up the additions and subtractions
+	if(vec->len >= 2) {
+		token_t *tok = *(token_t **)VectorAt(vec, 0);
+		token_t *lookahead = *(token_t **)VectorAt(vec, 1);
+		if (tok->type == TOK_ADD && lookahead->type == TOK_NUMBER) {
+			DeleteToken(tok);
+			VectorErase(vec, 0);
+		}
+		if (tok->type == TOK_SUB && lookahead->type == TOK_NUMBER) {
+			lookahead->val *= -1;
+			DeleteToken(tok);
+			VectorErase(vec, 0);
+		}
+	}
+
+	for (size_t i = 0; i < vec->len - 1; ++i) {
+		token_t *tok = *(token_t **)VectorAt(vec, i);
+		token_t *lookahead = *(token_t **)VectorAt(vec, i + 1);
+		if (!tok) break;
+
+		if (tok->type != TOK_NUMBER && lookahead->type == TOK_ADD && (*(token_t **)VectorAt(vec, i + 2))->type == TOK_NUMBER) {
+			DeleteToken(lookahead);
+			VectorErase(vec, i + 1);
+			continue;
+		}
+		if (tok->type != TOK_NUMBER && lookahead->type == TOK_SUB && (*(token_t **)VectorAt(vec, i + 2))->type == TOK_NUMBER) {
+			(*(token_t **)VectorAt(vec, i + 2))->val *= -1;
+			DeleteToken(lookahead);
+			VectorErase(vec, i + 1);
+			continue;
+		}
+	}
+
 	double result = Parse(vec);
 	if (errno == 0) {
 		printf("Rjesenje je %lg\n", result);
@@ -80,23 +113,36 @@ void ExpressionParser() {
 	DeleteVector(vec);
 	DeleteTokenizer(tokenizer);
 }
+void PrintConstants() {
+	printf("Konstante:\n");
+	printf("\t'e' - eulerov broj (2.71828)\n");
+	printf("\t'pi' - pi (3.1415)\n");
+
+	printf("Funkcije:\n");
+	printf("\t'sin(n)' - sinus\n");
+	printf("\t'cos(n)' - kosinus\n");
+	printf("\t'tg(n)' - tangens\n");
+	printf("\t'ctg(n)' - kotangens\n");
+	printf("\t'log(n)' - logaritam po bazi 10\n");
+	printf("\t'ln(n)' - prirodni logaritam\n");
+	printf("\t'sqrt(n)' - kvadratni korijen\n");
+	printf("\t'abs(n)' - absolutno\n");
+}
 void FindNumber() {
 	char file[256] = { 0 };
 	double target;
 	
 	while (getc(stdin) != '\n');
 	printf("Unesite putanju datoteke: ");
-	scanf("%256[^\n]", file);
-	getc(stdin);
-
-	printf("Unesite trazeni broj: ");
-	scanf(" %lf", &target);
+	scanf("%256[^\n]", file); getc(stdin);
 
 	FILE *fp = fopen(file, "r");
 	if (!fp) {
 		printf("Greska u otvaranju dokumenta\n");
 		return;
 	}
+	printf("Unesite trazeni broj: ");
+	scanf(" %lf", &target);
 
 	size_t ctr = 0;
 	double tmp = 0;
@@ -119,8 +165,7 @@ void SortNumbers() {
 
 	while (getc(stdin) != '\n');
 	printf("Unesite putanju datoteke: ");
-	scanf("%256[^\n]", file);
-	getc(stdin);
+	scanf("%256[^\n]", file); getc(stdin);
 
 	FILE *fp = fopen(file, "r");
 	if (!fp) {
@@ -134,8 +179,7 @@ void SortNumbers() {
 	printf("\tIzraz: 'x < y'\n");
 	printf("\tNakon sortiranja [6, 4, 2, 1]\n");
 	printf("x ");
-	scanf(" %1023[^\n]", exprBuffer);
-	getc(stdin);
+	scanf(" %1023[^\n]", exprBuffer); getc(stdin);
 
 	size_t ctr = 0;
 	double tmp = 0;
@@ -265,8 +309,9 @@ int main(void) {
 	while(1) {
 		printf("Unesite:\n");
 		printf("\t[1] Proslijedivanje izraza\n");
-		printf("\t[2] Trazenje broja\n");
-		printf("\t[3] Sortiranje brojeva\n");
+		printf("\t[2] Konstante i funkcije\n");
+		printf("\t[3] Trazenje broja\n");
+		printf("\t[4] Sortiranje brojeva\n");
 		printf("\t[0] Kraj\n> ");
 
 
@@ -280,15 +325,10 @@ int main(void) {
 		}
 		if (!choice) break;
 
-		if (choice == 1) {
-			ExpressionParser();
-		}
-		else if (choice == 2) {
-			FindNumber();
-		}
-		else if (choice == 3) {
-			SortNumbers();
-		}
+		if (choice == 1)		ExpressionParser();
+		else if (choice == 2)	PrintConstants();
+		else if (choice == 3)	FindNumber();
+		else if (choice == 4)	SortNumbers();
 
 		printf("\n");
 		errno = 0;

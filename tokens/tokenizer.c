@@ -65,8 +65,6 @@ token_t *TokenizerNextToken(tokenizer_t *tokenizer) {
 				tokenizer->index++;
 			}
 		}
-
-
 		return CreateOperation((negatives & 1) ? '-' : '+');
 	}
 

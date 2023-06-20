@@ -35,7 +35,7 @@ token_t *CreateFunc(const char *name) {
 	else if (!strcmp(name, "cos")) tok->type = TOK_FUNC_COS;
 	else if (!strcmp(name, "tg")) tok->type = TOK_FUNC_TG;
 	else if (!strcmp(name, "ctg")) tok->type = TOK_FUNC_CTG;
-	else if (!strcmp(name, "log")) tok->type = TOK_FUNC_LN;
+	else if (!strcmp(name, "log")) tok->type = TOK_FUNC_LOG;
 	else if (!strcmp(name, "ln")) tok->type = TOK_FUNC_LN;
 	else if (!strcmp(name, "sqrt")) tok->type = TOK_FUNC_SQRT;
 	else if (!strcmp(name, "abs")) tok->type = TOK_FUNC_ABS;
